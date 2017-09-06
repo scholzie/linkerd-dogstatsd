@@ -1,4 +1,4 @@
-package io.buoyant.telemetry.statsd
+package com.blueapron.linkerd.telemetry.dogstatsd
 
 import com.twitter.conversions.time._
 import com.twitter.finagle.tracing.NullTracer

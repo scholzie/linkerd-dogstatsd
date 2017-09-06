@@ -1,4 +1,4 @@
-package io.buoyant.telemetry
+package com.blueapron.linkerd.telemetry
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
@@ -6,12 +6,12 @@ import com.timgroup.statsd.NonBlockingStatsDClient
 import com.twitter.finagle.Stack
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.logging.Logger
-import io.buoyant.telemetry.statsd.{StatsDStatsReceiver, StatsDTelemeter}
+import com.blueapron.linkerd.telemetry.statsd.{StatsDStatsReceiver, StatsDTelemeter}
 
 class StatsDInitializer extends TelemeterInitializer {
   type Config = StatsDConfig
   val configClass = classOf[StatsDConfig]
-  override val configId = "com.blueapron.dogstatsd"
+  override val configId = "com.blueapron.linkerd.telemetry.dogstatsd"
 }
 
 private[telemetry] object StatsDConfig {
@@ -52,7 +52,7 @@ case class StatsDConfig(
   def mk(params: Stack.Params): StatsDTelemeter = {
     // initiate a UDP connection at startup time
     log.info("connecting to StatsD at %s:%d as %s", statsDHost, statsDPort, statsDPrefix)
-    val statsDClient = if (datadogEnabled)
+    val statsDClient = if (!statsDConstantTags.isEmpty && datadogEnabled)
       new NonBlockingStatsDClient(
         statsDPrefix,
         statsDHost,
