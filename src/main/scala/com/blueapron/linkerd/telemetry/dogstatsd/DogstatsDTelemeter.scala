@@ -6,13 +6,13 @@ import com.twitter.util.{Awaitable, Closable, CloseAwaitably, Future, Time, Time
 import io.buoyant.telemetry.Telemeter
 import java.util.concurrent.atomic.AtomicBoolean
 
-private[telemetry] class StatsDTelemeter(
-  val stats: StatsDStatsReceiver,
+private[telemetry] class DogstatsDTelemeter(
+  val stats: DogstatsDStatsReceiver,
   gaugeIntervalMs: Int,
   timer: Timer
 ) extends Telemeter {
 
-  // no tracer with statsd
+  // no tracer with dogstatsd
   val tracer = NullTracer
 
   private[this] val started = new AtomicBoolean(false)

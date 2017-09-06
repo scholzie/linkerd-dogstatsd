@@ -6,27 +6,26 @@ import com.timgroup.statsd.NonBlockingStatsDClient
 import com.twitter.finagle.Stack
 import com.twitter.finagle.util.DefaultTimer
 import com.twitter.logging.Logger
-import com.blueapron.linkerd.telemetry.statsd.{StatsDStatsReceiver, StatsDTelemeter}
+import com.blueapron.linkerd.telemetry.dogstatsd.{DogdogstatsDStatsReceiver, DogdogstatsDTelemeter}
 
 class StatsDInitializer extends TelemeterInitializer {
-  type Config = StatsDConfig
-  val configClass = classOf[StatsDConfig]
+  type Config = DogdogstatsDConfig
+  val configClass = classOf[DogdogstatsDConfig]
   override val configId = "com.blueapron.linkerd.telemetry.dogstatsd"
 }
 
-private[telemetry] object StatsDConfig {
+private[telemetry] object DogdogstatsDConfig {
   val DefaultPrefix = "linkerd"
   val DefaultHostname = "127.0.0.1"
   val DefaultPort = 8125
   val DefaultGaugeIntervalMs = 10000 // for gauges
   val DefaultSampleRate = 0.01d // for counters and timing/histograms
-  val DefaultConstantTags = Nil
-  val EnableDatadog = false
+  val DefaultConstantTags = List()
 
   val MaxQueueSize = 10000
 }
 
-case class StatsDConfig(
+case class DogdogstatsDConfig(
   prefix: Option[String],
   hostname: Option[String],
   port: Option[Int],
@@ -34,43 +33,34 @@ case class StatsDConfig(
   constantTags: Option[String],
   @JsonDeserialize(contentAs = classOf[java.lang.Double]) sampleRate: Option[Double]
 ) extends TelemeterConfig {
-  import StatsDConfig._
+  import DogdogstatsDConfig._
 
   @JsonIgnore override val experimentalRequired = true
 
-  @JsonIgnore private[this] val log = Logger.get("com.blueapron.dogstatsd")
+  @JsonIgnore private[this] val log = Logger.get("com.blueapron.linkerd.telemetry.dogstatsd")
 
-  @JsonIgnore private[this] val statsDPrefix = prefix.getOrElse(DefaultPrefix)
-  @JsonIgnore private[this] val statsDHost = hostname.getOrElse(DefaultHostname)
-  @JsonIgnore private[this] val statsDPort = port.getOrElse(DefaultPort)
-  @JsonIgnore private[this] val statsDInterval = gaugeIntervalMs.getOrElse(DefaultGaugeIntervalMs)
-  @JsonIgnore private[this] val statsDSampleRate = sampleRate.getOrElse(DefaultSampleRate)
-  @JsonIgnore private[this] val statsDConstantTags = constantTags.getOrElse(DefaultConstantTags)
-  @JsonIgnore private[this] val datadogEnabled = EnableDatadog
+  @JsonIgnore private[this] val dogstatsDPrefix = prefix.getOrElse(DefaultPrefix)
+  @JsonIgnore private[this] val dogstatsDHost = hostname.getOrElse(DefaultHostname)
+  @JsonIgnore private[this] val dogstatsDPort = port.getOrElse(DefaultPort)
+  @JsonIgnore private[this] val dogstatsDInterval = gaugeIntervalMs.getOrElse(DefaultGaugeIntervalMs)
+  @JsonIgnore private[this] val dogstatsDSampleRate = sampleRate.getOrElse(DefaultSampleRate)
+  @JsonIgnore private[this] val dogstatsDConstantTags = constantTags.getOrElse(DefaultConstantTags)
 
   @JsonIgnore
-  def mk(params: Stack.Params): StatsDTelemeter = {
+  def mk(params: Stack.Params): DogdogstatsDTelemeter = {
     // initiate a UDP connection at startup time
-    log.info("connecting to StatsD at %s:%d as %s", statsDHost, statsDPort, statsDPrefix)
-    val statsDClient = if (!statsDConstantTags.isEmpty && datadogEnabled)
-      new NonBlockingStatsDClient(
-        statsDPrefix,
-        statsDHost,
-        statsDPort,
-        MaxQueueSize,
-        statsDConstantTags
-      )
-    else
-      new NonBlockingStatsDClient(
-        statsDPrefix,
-        statsDHost,
-        statsDPort,
-        MaxQueueSize
-      )
+    log.info("connecting to DogdogstatsD at %s:%d as %s", dogstatsDHost, dogstatsDPort, dogstatsDPrefix)
+    val dogstatsDClient = new NonBlockingStatsDClient(
+      dogstatsDPrefix,
+      dogstatsDHost,
+      dogstatsDPort,
+      MaxQueueSize,
+      dogstatsDConstantTags
+    )
 
-    new StatsDTelemeter(
-      new StatsDStatsReceiver(statsDClient, statsDSampleRate),
-      statsDInterval,
+    new DogtatsDTelemeter(
+      new DogstatsDStatsReceiver(dogstatsDClient, dogstatsDSampleRate),
+      dogstatsDInterval,
       DefaultTimer
     )
   }
