@@ -2,23 +2,22 @@ package com.blueapron.linkerd.telemetry.dogstatsd
 
 import java.util.concurrent.ConcurrentHashMap
 import com.timgroup.statsd.StatsDClient
-import com.twitter.finagle.stats.{Counter, Stat, StatsReceiverWithCumulativeGauges}
+import com.twitter.finagle.stats.{ Counter, Stat, StatsReceiverWithCumulativeGauges }
 import scala.collection.JavaConverters._
 
 private[telemetry] object DogstatsDStatsReceiver {
   // from https://github.com/researchgate/diamond-linkerd-collector/
   /*** TODO: Determine a way to extract the tag(s) from this name string?? ***/
-  private[dogstatsd] def mkName(name: Seq[String]): String = {
-    name.mkString("/")
-      .replaceAll("[^/A-Za-z0-9]", "_")
+  private[dogstatsd] def mkName(name: String): String = {
+    name.replaceAll("[^/A-Za-z0-9]", "_")
       .replace("//", "/")
       .replace("/", ".") // http://graphite.readthedocs.io/en/latest/feeding-carbon.html#step-1-plan-a-naming-hierarchy
   }
 }
 
 private[telemetry] class DogstatsDStatsReceiver(
-  dogstatsDClient: StatsDClient,
-  sampleRate: Double
+    dogstatsDClient: StatsDClient,
+    sampleRate: Double
 ) extends StatsReceiverWithCumulativeGauges {
   import DogstatsDStatsReceiver._
 
@@ -33,37 +32,41 @@ private[telemetry] class DogstatsDStatsReceiver(
   private[this] val gauges = new ConcurrentHashMap[String, Metric.Gauge]
   private[this] val stats = new ConcurrentHashMap[String, Metric.Stat]
 
-  protected[this] def registerGauge(name: Seq[String],
-                                    f: => Float,
-                                    tags: List[String] = List()): Unit = {
+  protected[this] def registerGauge(
+    name: String,
+    f: => Float,
+    tags: String*
+  ): Unit = {
     deregisterGauge(name)
 
     val dogstatsDName = mkName(name)
     val _ = gauges.put(dogstatsDName, new Metric.Gauge(dogstatsDClient, dogstatsDName, f, tags))
   }
 
-  protected[this] def deregisterGauge(name: Seq[String]): Unit = {
+  protected[this] def deregisterGauge(name: String): Unit = {
     val _ = gauges.remove(mkName(name))
   }
 
-  def counter(name: String*, tags: List[String] = List()): Counter = {
+  def counter(name: String, tags: String*): Counter = {
     val dogstatsDName = mkName(name)
     val newCounter = new Metric.Counter(
       dogstatsDClient,
       dogstatsDName,
       sampleRate,
-      tags)
+      tags
+    )
     val counter = counters.putIfAbsent(dogstatsDName, newCounter)
     if (counter != null) counter else newCounter
   }
 
-  def stat(name: String*, tags: List[string] = List()): Stat = {
+  def stat(name: String, tags: String*): Stat = {
     val dogstatsDName = mkName(name)
     val newStat = new Metric.Stat(
       dogstatsDClient,
       dogstatsDName,
       sampleRate,
-      tags)
+      tags
+    )
     val stat = stats.putIfAbsent(dogstatsDName, newStat)
     if (stat != null) stat else newStat
   }

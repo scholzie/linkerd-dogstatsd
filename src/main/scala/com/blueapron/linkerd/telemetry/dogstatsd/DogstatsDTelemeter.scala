@@ -2,14 +2,14 @@ package com.blueapron.linkerd.telemetry.dogstatsd
 
 import com.twitter.conversions.time._
 import com.twitter.finagle.tracing.NullTracer
-import com.twitter.util.{Awaitable, Closable, CloseAwaitably, Future, Time, Timer}
+import com.twitter.util.{ Awaitable, Closable, CloseAwaitably, Future, Time, Timer }
 import io.buoyant.telemetry.Telemeter
 import java.util.concurrent.atomic.AtomicBoolean
 
 private[telemetry] class DogstatsDTelemeter(
-  val stats: DogstatsDStatsReceiver,
-  gaugeIntervalMs: Int,
-  timer: Timer
+    val stats: DogstatsDStatsReceiver,
+    gaugeIntervalMs: Int,
+    timer: Timer
 ) extends Telemeter {
 
   // no tracer with dogstatsd
