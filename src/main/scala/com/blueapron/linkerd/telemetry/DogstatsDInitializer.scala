@@ -55,7 +55,7 @@ case class DogstatsDConfig(
       dogstatsDHost,
       dogstatsDPort,
       MaxQueueSize,
-      dogstatsDConstantTags
+      constantTags: _*
     )
 
     new DogstatsDTelemeter(

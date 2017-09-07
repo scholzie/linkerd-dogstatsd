@@ -8,8 +8,9 @@ import scala.collection.JavaConverters._
 private[telemetry] object DogstatsDStatsReceiver {
   // from https://github.com/researchgate/diamond-linkerd-collector/
   /*** TODO: Determine a way to extract the tag(s) from this name string?? ***/
-  private[dogstatsd] def mkName(name: String): String = {
-    name.replaceAll("[^/A-Za-z0-9]", "_")
+  private[dogstatsd] def mkName(name: Seq[String]): String = {
+    name.mkString("/")
+      .replaceAll("[^/A-Za-z0-9]", "_")
       .replace("//", "/")
       .replace("/", ".") // http://graphite.readthedocs.io/en/latest/feeding-carbon.html#step-1-plan-a-naming-hierarchy
   }
@@ -17,7 +18,8 @@ private[telemetry] object DogstatsDStatsReceiver {
 
 private[telemetry] class DogstatsDStatsReceiver(
     dogstatsDClient: StatsDClient,
-    sampleRate: Double
+    sampleRate: Double,
+    tags: String*
 ) extends StatsReceiverWithCumulativeGauges {
   import DogstatsDStatsReceiver._
 
@@ -33,39 +35,38 @@ private[telemetry] class DogstatsDStatsReceiver(
   private[this] val stats = new ConcurrentHashMap[String, Metric.Stat]
 
   protected[this] def registerGauge(
-    name: String,
-    f: => Float,
-    tags: String*
+    name: Seq[String],
+    f: => Float
   ): Unit = {
     deregisterGauge(name)
 
     val dogstatsDName = mkName(name)
-    val _ = gauges.put(dogstatsDName, new Metric.Gauge(dogstatsDClient, dogstatsDName, f, tags))
+    val _ = gauges.put(dogstatsDName, new Metric.Gauge(dogstatsDClient, dogstatsDName, f, tags: _*))
   }
 
-  protected[this] def deregisterGauge(name: String): Unit = {
+  protected[this] def deregisterGauge(name: Seq[String]): Unit = {
     val _ = gauges.remove(mkName(name))
   }
 
-  def counter(name: String, tags: String*): Counter = {
+  def counter(name: String*): Counter = {
     val dogstatsDName = mkName(name)
     val newCounter = new Metric.Counter(
       dogstatsDClient,
       dogstatsDName,
       sampleRate,
-      tags
+      tags: _*
     )
     val counter = counters.putIfAbsent(dogstatsDName, newCounter)
     if (counter != null) counter else newCounter
   }
 
-  def stat(name: String, tags: String*): Stat = {
+  def stat(name: String*): Stat = {
     val dogstatsDName = mkName(name)
     val newStat = new Metric.Stat(
       dogstatsDClient,
       dogstatsDName,
       sampleRate,
-      tags
+      tags: _*
     )
     val stat = stats.putIfAbsent(dogstatsDName, newStat)
     if (stat != null) stat else newStat
