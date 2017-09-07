@@ -8,18 +8,18 @@ import scala.collection.JavaConverters._
 private[telemetry] object DogstatsDStatsReceiver {
   // from https://github.com/researchgate/diamond-linkerd-collector/
   /*** TODO: Determine a way to extract the tag(s) from this name string?? ***/
-  private[dogstatsd] def mkName(name: Seq[String]): String = {
+  private[dogstatsd] def mkName(name: Seq[String]): (String, Seq[String]) = {
     name.mkString("/")
       .replaceAll("[^/A-Za-z0-9]", "_")
       .replace("//", "/")
-      .replace("/", ".") // http://graphite.readthedocs.io/en/latest/feeding-carbon.html#step-1-plan-a-naming-hierarchy
+      .replace("/", "."), // http://graphite.readthedocs.io/en/latest/feeding-carbon.html#step-1-plan-a-naming-hierarchy
+    Seq())
   }
 }
 
 private[telemetry] class DogstatsDStatsReceiver(
     dogstatsDClient: StatsDClient,
-    sampleRate: Double,
-    tags: String*
+    sampleRate: Double
 ) extends StatsReceiverWithCumulativeGauges {
   import DogstatsDStatsReceiver._
 
@@ -40,33 +40,33 @@ private[telemetry] class DogstatsDStatsReceiver(
   ): Unit = {
     deregisterGauge(name)
 
-    val dogstatsDName = mkName(name)
-    val _ = gauges.put(dogstatsDName, new Metric.Gauge(dogstatsDClient, dogstatsDName, f, tags: _*))
+    val (dogstatsDName, tags) = mkName(name)
+    val _ = gauges.put(dogstatsDName, new Metric.Gauge(dogstatsDClient, dogstatsDName, f, tags))
   }
 
   protected[this] def deregisterGauge(name: Seq[String]): Unit = {
-    val _ = gauges.remove(mkName(name))
+    val _ = gauges.remove(mkName(name)._1)
   }
 
   def counter(name: String*): Counter = {
-    val dogstatsDName = mkName(name)
+    val (dogstatsDName, tags) = mkName(name)
     val newCounter = new Metric.Counter(
       dogstatsDClient,
       dogstatsDName,
       sampleRate,
-      tags: _*
+      tags
     )
     val counter = counters.putIfAbsent(dogstatsDName, newCounter)
     if (counter != null) counter else newCounter
   }
 
   def stat(name: String*): Stat = {
-    val dogstatsDName = mkName(name)
+    val (dogstatsDName, tags) = mkName(name)
     val newStat = new Metric.Stat(
       dogstatsDClient,
       dogstatsDName,
       sampleRate,
-      tags: _*
+      tags
     )
     val stat = stats.putIfAbsent(dogstatsDName, newStat)
     if (stat != null) stat else newStat
