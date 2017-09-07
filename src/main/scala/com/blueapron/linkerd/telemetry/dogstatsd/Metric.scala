@@ -12,17 +12,17 @@ private[dogstatsd] object Metric {
       sampleRate: Double,
       tags: Seq[String]
   ) extends FCounter {
-    def incr(delta: Int): Unit = dogstatsDClient.count(name, delta, sampleRate, tags)
+    def incr(delta: Int): Unit = dogstatsDClient.count(name, delta, sampleRate, tags: _*)
   }
 
   // gauges simply evaluate on send
-  class Gauge(dogstatsDClient: StatsDClient, name: String, f: => Float, tags: String*) {
-    def send: Unit = dogstatsDClient.recordGaugeValue(name, f, tags)
+  class Gauge(dogstatsDClient: StatsDClient, name: String, f: => Float, tags: Seq[String]) {
+    def send: Unit = dogstatsDClient.recordGaugeValue(name, f, tags: _*)
   }
 
   // stats (timing/histograms) only send when Math.random() <= sampleRate
-  class Stat(dogstatsDClient: StatsDClient, name: String, sampleRate: Double, tags: String*) extends FStat {
+  class Stat(dogstatsDClient: StatsDClient, name: String, sampleRate: Double, tags: Seq[String]) extends FStat {
     def add(value: Float): Unit =
-      dogstatsDClient.recordHistogramValue(name, value.toLong, sampleRate, tags)
+      dogstatsDClient.recordHistogramValue(name, value.toLong, sampleRate, tags: _*)
   }
 }

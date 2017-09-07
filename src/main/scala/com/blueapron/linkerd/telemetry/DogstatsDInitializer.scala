@@ -31,7 +31,7 @@ case class DogstatsDConfig(
     port: Option[Int],
     gaugeIntervalMs: Option[Int],
     @JsonDeserialize(contentAs = classOf[java.lang.Double]) sampleRate: Option[Double],
-    constantTags: String*
+    constantTags: Seq[String]
 ) extends TelemeterConfig {
   import DogstatsDConfig._
 
@@ -44,7 +44,8 @@ case class DogstatsDConfig(
   @JsonIgnore private[this] val dogstatsDPort = port.getOrElse(DefaultPort)
   @JsonIgnore private[this] val dogstatsDInterval = gaugeIntervalMs.getOrElse(DefaultGaugeIntervalMs)
   @JsonIgnore private[this] val dogstatsDSampleRate = sampleRate.getOrElse(DefaultSampleRate)
-  @JsonIgnore private[this] val dogstatsDConstantTags = constantTags
+  //@JsonIgnore private[this] val dogstatsDConstantTags = constantTags
+  @JsonIgnore private[this] val dogstatsDConstantTags = Seq("app:linkerd-test-constant")
 
   @JsonIgnore
   def mk(params: Stack.Params): DogstatsDTelemeter = {
@@ -55,7 +56,7 @@ case class DogstatsDConfig(
       dogstatsDHost,
       dogstatsDPort,
       MaxQueueSize,
-      constantTags: _*
+      dogstatsDConstantTags: _*
     )
 
     new DogstatsDTelemeter(

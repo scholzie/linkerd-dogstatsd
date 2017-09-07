@@ -9,11 +9,13 @@ private[telemetry] object DogstatsDStatsReceiver {
   // from https://github.com/researchgate/diamond-linkerd-collector/
   /*** TODO: Determine a way to extract the tag(s) from this name string?? ***/
   private[dogstatsd] def mkName(name: Seq[String]): (String, Seq[String]) = {
-    name.mkString("/")
+    (
+      name.mkString("/")
       .replaceAll("[^/A-Za-z0-9]", "_")
       .replace("//", "/")
       .replace("/", "."), // http://graphite.readthedocs.io/en/latest/feeding-carbon.html#step-1-plan-a-naming-hierarchy
-    Seq())
+      Seq("app:linkerd-test")
+    )
   }
 }
 
