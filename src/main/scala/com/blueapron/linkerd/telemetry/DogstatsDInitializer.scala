@@ -21,7 +21,6 @@ private[telemetry] object DogstatsDConfig {
   val DefaultPort = 8125
   val DefaultGaugeIntervalMs = 10000 // for gauges
   val DefaultSampleRate = 0.01d // for counters and timing/histograms
-  val DefaultConstantTags = null
 
   val MaxQueueSize = 10000
 }
@@ -31,8 +30,8 @@ case class DogstatsDConfig(
     hostname: Option[String],
     port: Option[Int],
     gaugeIntervalMs: Option[Int],
-    constantTags: Option[String],
-    @JsonDeserialize(contentAs = classOf[java.lang.Double]) sampleRate: Option[Double]
+    @JsonDeserialize(contentAs = classOf[java.lang.Double]) sampleRate: Option[Double],
+    constantTags: String*
 ) extends TelemeterConfig {
   import DogstatsDConfig._
 
@@ -45,7 +44,7 @@ case class DogstatsDConfig(
   @JsonIgnore private[this] val dogstatsDPort = port.getOrElse(DefaultPort)
   @JsonIgnore private[this] val dogstatsDInterval = gaugeIntervalMs.getOrElse(DefaultGaugeIntervalMs)
   @JsonIgnore private[this] val dogstatsDSampleRate = sampleRate.getOrElse(DefaultSampleRate)
-  @JsonIgnore private[this] val dogstatsDConstantTags = constantTags.getOrElse(DefaultConstantTags)
+  @JsonIgnore private[this] val dogstatsDConstantTags = constantTags
 
   @JsonIgnore
   def mk(params: Stack.Params): DogstatsDTelemeter = {
