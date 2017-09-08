@@ -17,7 +17,7 @@ private[dogstatsd] object Metric {
 
   // gauges simply evaluate on send
   class Gauge(
-    dogstatsDClient: StatsDClient,
+      dogstatsDClient: StatsDClient,
       name: String,
       f: => Float,
       tags: Seq[String]
@@ -27,7 +27,7 @@ private[dogstatsd] object Metric {
 
   // stats (timing/histograms) only send when Math.random() <= sampleRate
   class Stat(
-    dogstatsDClient: StatsDClient,
+      dogstatsDClient: StatsDClient,
       name: String,
       sampleRate: Double,
       tags: Seq[String]

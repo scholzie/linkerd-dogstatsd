@@ -1,21 +1,49 @@
 package com.blueapron.linkerd.telemetry.dogstatsd
 
 import java.util.concurrent.ConcurrentHashMap
+import scala.collection.mutable.ListBuffer
 import com.timgroup.statsd.StatsDClient
 import com.twitter.finagle.stats.{ Counter, Stat, StatsReceiverWithCumulativeGauges }
 import scala.collection.JavaConverters._
 
 private[telemetry] object DogstatsDStatsReceiver {
-  // from https://github.com/researchgate/diamond-linkerd-collector/
-  /*** TODO: Determine a way to extract the tag(s) from this name string?? ***/
+  // TODO: Work through metric name scenarios for comprehensive tagging and
+  //       statistic naming
   private[dogstatsd] def mkName(name: Seq[String]): (String, Seq[String]) = {
-    (
-      name.mkString("/")
+    val tags = new ListBuffer[String]()
+    val nameBuf = StringBuilder.newBuilder
+    nameBuf.append("linkerd")
+
+    var cleanName = name.mkString("/")
       .replaceAll("[^/A-Za-z0-9]", "_")
-      .replace("//", "/")
-      .replace("/", "."), // http://graphite.readthedocs.io/en/latest/feeding-carbon.html#step-1-plan-a-naming-hierarchy
-      Seq() // <-- tags go here (app, namer, etc.)
-    )
+      .replaceAll("/{2,}", "/")
+      .replace("/", ".") // http://graphite.readthedocs.io/en/latest/feeding-carbon.html#step-1-plan-a-naming-hierarchy
+      .replaceAll("\\.{2,}", ".")
+      .split(".")
+
+    if (cleanName(1) == "rt") {
+      nameBuf.append(".routers")
+      val routerLabel = cleanName(2)
+      tags += s"router:$routerLabel"
+
+      if (cleanName(4) == "server") {
+        nameBuf.append(".servers")
+        val serverAddress = cleanName(5)
+        val serverPort = cleanName(6)
+        tags += s"linkerd_listener:$serverAddress:$serverPort"
+      } else {
+        nameBuf.append(".interpreter")
+        val interpreter = cleanName(4)
+        tags += s"linkerd_interpreter:$interpreter"
+      }
+
+      nameBuf.append(cleanName.last) // the statistic itself
+    } else {
+      // Catch-all for other options not picked up by the above
+      nameBuf.append(cleanName.mkString("."))
+    }
+
+    (nameBuf.toString, tags.toSeq)
   }
 }
 
