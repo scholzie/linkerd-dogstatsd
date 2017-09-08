@@ -44,8 +44,7 @@ case class DogstatsDConfig(
   @JsonIgnore private[this] val dogstatsDPort = port.getOrElse(DefaultPort)
   @JsonIgnore private[this] val dogstatsDInterval = gaugeIntervalMs.getOrElse(DefaultGaugeIntervalMs)
   @JsonIgnore private[this] val dogstatsDSampleRate = sampleRate.getOrElse(DefaultSampleRate)
-  //@JsonIgnore private[this] val dogstatsDConstantTags = constantTags
-  @JsonIgnore private[this] val dogstatsDConstantTags = Seq("app:linkerd-test-constant")
+  @JsonIgnore private[this] val dogstatsDConstantTags = constantTags
 
   @JsonIgnore
   def mk(params: Stack.Params): DogstatsDTelemeter = {

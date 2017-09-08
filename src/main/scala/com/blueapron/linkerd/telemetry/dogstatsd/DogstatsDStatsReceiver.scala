@@ -14,7 +14,7 @@ private[telemetry] object DogstatsDStatsReceiver {
       .replaceAll("[^/A-Za-z0-9]", "_")
       .replace("//", "/")
       .replace("/", "."), // http://graphite.readthedocs.io/en/latest/feeding-carbon.html#step-1-plan-a-naming-hierarchy
-      Seq("app:linkerd-test")
+      Seq() // <-- tags go here (app, namer, etc.)
     )
   }
 }
