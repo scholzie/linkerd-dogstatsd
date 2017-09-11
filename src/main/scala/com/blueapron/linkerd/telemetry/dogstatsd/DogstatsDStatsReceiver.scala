@@ -72,11 +72,12 @@ private[telemetry] object DogstatsDStatsReceiver {
       tags += s"app:$appName"
       tags += s"app_namespace:$namespace"
       tags += s"app_service:$appServiceName"
-      val metricName: String = name.mkString(".")
+      val metricName: String = name
         .filterNot(field => field == appName &&
           field == namespace &&
           field == appServiceName &&
           field == envName)
+        .mkString(".")
     } else {
       mkDefaultName(cleanName)
     }
