@@ -17,31 +17,31 @@ private[telemetry] object DogstatsDStatsReceiver {
     (nameBuf.toString, tags.toSeq)
   }
 
-//  private[dogstatsd] def mkRouterName(name: Seq[String]): (String, Seq[String]) = {
-//    val nameBuf = StringBuilder.newBuilder
-//    val tags = new ListBuilder[String]()
-//    nameBuf.append("linkerd.routers")
-//
-//    val routerLabel = name(3)
-//    tags += s"souter:$routerLabel"
-//
-//    if name(5) == "server" {
-//      nameBuf.append(".servers")
-//      val listenerAddress = name(6)
-//      val listenerPort = name(7)
-//      tags += s"linkerd_listener:$serverAddress:$serverPort"
-//    } else {
-//      nameBuf.append(".interpreter")
-//      val interpreter = cleanName(5)
-//      tags += s"linkerd_interpreter:$interpreter"
-//    }
-//    nameBuf.append(name.last) // append the stat itself
-//  }
+  //  private[dogstatsd] def mkRouterName(name: Seq[String]): (String, Seq[String]) = {
+  //    val nameBuf = StringBuilder.newBuilder
+  //    val tags = new ListBuilder[String]()
+  //    nameBuf.append("linkerd.routers")
+  //
+  //    val routerLabel = name(3)
+  //    tags += s"souter:$routerLabel"
+  //
+  //    if name(5) == "server" {
+  //      nameBuf.append(".servers")
+  //      val listenerAddress = name(6)
+  //      val listenerPort = name(7)
+  //      tags += s"linkerd_listener:$serverAddress:$serverPort"
+  //    } else {
+  //      nameBuf.append(".interpreter")
+  //      val interpreter = cleanName(5)
+  //      tags += s"linkerd_interpreter:$interpreter"
+  //    }
+  //    nameBuf.append(name.last) // append the stat itself
+  //  }
 
   private[dogstatsd] def mkName(name: Seq[String]): (String, Seq[String]) = {
-    var nameBuf = StringBuilder.newBuilder
-    var tags = new ListBuilder[String]()
-    var cleanName = name.mkString("/")
+    var metricName: String = ""
+    val tags = new ListBuffer[String]()
+    val cleanName = name.mkString("/")
       .replaceAll("[^/A-Za-z0-9]", "_")
       .replaceAll("/{2,}", "/")
       .replace("/", ".") // http://graphite.readthedocs.io/en/latest/feeding-carbon.html#step-1-plan-a-naming-hierarchy
@@ -54,7 +54,7 @@ private[telemetry] object DogstatsDStatsReceiver {
     //   we'll have to catch this as well eventually instead of just bailing
     //   out.
     val environmentAnchors = List("development", "production", "staging", "util")
-    val anchorIndex : Int = -1
+    var anchorIndex: Int = -1
     for (env <- environmentAnchors) {
       anchorIndex = name.indexOf(env)
       if (anchorIndex >= 0) {
@@ -65,23 +65,22 @@ private[telemetry] object DogstatsDStatsReceiver {
     }
     if (anchorIndex != -1) { // We found a service name and parse the tags
       val envName = cleanName(anchorIndex)
-      val appName = cleanName(anchorIndex-1)
-      val namespace = cleanName(anchorIndex+1)
-      val appServiceName = cleanName(anchorIndex+2)
+      val appName = cleanName(anchorIndex - 1)
+      val namespace = cleanName(anchorIndex + 1)
+      val appServiceName = cleanName(anchorIndex + 2)
 
       tags += s"app:$appName"
       tags += s"app_namespace:$namespace"
       tags += s"app_service:$appServiceName"
-      val metricName : String = name.mkString(".")
-        .filterNot(field => field == appName && \
-          field == namespace && \
-          field == appServiceName && \
-          field == envName
-        )
+      val metricName: String = name.mkString(".")
+        .filterNot(field => field == appName &&
+          field == namespace &&
+          field == appServiceName &&
+          field == envName)
     } else {
       mkDefaultName(cleanName)
     }
-
+    if (metricName.isEmpty) metricName = cleanName.mkString(".")
     (metricName, tags)
   }
 
@@ -105,8 +104,8 @@ private[telemetry] object DogstatsDStatsReceiver {
 }
 
 private[telemetry] class DogstatsDStatsReceiver(
-  dogstatsDClient: StatsDClient,
-  sampleRate: Double
+    dogstatsDClient: StatsDClient,
+    sampleRate: Double
 ) extends StatsReceiverWithCumulativeGauges {
   import DogstatsDStatsReceiver._
 

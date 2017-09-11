@@ -17,7 +17,7 @@ val `linkerd-dogstatsd` =
   project.in(file("."))
     .settings(
       organization := "com.blueapron",
-      version := "0.1.0",
+      version := "0.1.1",
       name := "linkerd-dogstatsd",
       scalaVersion in GlobalScope := "2.12.1",
       ivyScala := ivyScala.value.map(_.copy(overrideScalaVersion = true)),
