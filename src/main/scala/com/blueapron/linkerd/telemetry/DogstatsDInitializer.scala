@@ -11,7 +11,7 @@ import com.blueapron.linkerd.telemetry.dogstatsd.{ DogstatsDStatsReceiver, Dogst
 
 class DogstatsDInitializer extends TelemeterInitializer {
   type Config = DogstatsDConfig
-  val configClass = classOf[DogstatsDConfig]
+  override val configClass = classOf[DogstatsDConfig]
   override val configId = "com.blueapron.linkerd.telemetry.dogstatsd"
 }
 
@@ -21,6 +21,7 @@ private[telemetry] object DogstatsDConfig {
   val DefaultPort = 8125
   val DefaultGaugeIntervalMs = 10000 // for gauges
   val DefaultSampleRate = 0.01d // for counters and timing/histograms
+  val DefaultConstantTags = List("constant_tag:linkerd_test")
 
   val MaxQueueSize = 10000
 }
@@ -44,7 +45,7 @@ case class DogstatsDConfig(
   @JsonIgnore private[this] val dogstatsDPort = port.getOrElse(DefaultPort)
   @JsonIgnore private[this] val dogstatsDInterval = gaugeIntervalMs.getOrElse(DefaultGaugeIntervalMs)
   @JsonIgnore private[this] val dogstatsDSampleRate = sampleRate.getOrElse(DefaultSampleRate)
-  @JsonIgnore private[this] val dogstatsDConstantTags = constantTags.getOrElse(List())
+  @JsonIgnore private[this] val dogstatsDConstantTags = constantTags.getOrElse(DefaultConstantTags)
 
   @JsonIgnore
   def mk(params: Stack.Params): DogstatsDTelemeter = {
