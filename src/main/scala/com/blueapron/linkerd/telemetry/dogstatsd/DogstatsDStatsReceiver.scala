@@ -1,52 +1,74 @@
 package com.blueapron.linkerd.telemetry.dogstatsd
 
-import java.util.concurrent.ConcurrentHashMap
-import scala.collection.mutable.ListBuffer
 import com.timgroup.statsd.StatsDClient
 import com.twitter.finagle.stats.{ Counter, Stat, StatsReceiverWithCumulativeGauges }
+import com.twitter.logging._
+import java.util.concurrent.ConcurrentHashMap
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ListBuffer
 import scala.util.control.Breaks._
 
 private[telemetry] object DogstatsDStatsReceiver {
   // TODO: Work through metric name scenarios for comprehensive tagging and
   //       statistic naming
+  private val log = Logger.get("com.blueapron.linkerd.telemetry.dogstatsd")
+  log.setLevel(Level.DEBUG)
+
   private[dogstatsd] def mkDefaultName(name: Seq[String]): (String, Seq[String]) = {
+    log.ifDebug("In mkDefaultName() with\n\tname: %s".format(name.mkString("/")))
     val tags = new ListBuffer[String]()
     val nameBuf = StringBuilder.newBuilder
+    // nameBuf.append("linkerd.")
     tags += s"app:unknown"
-    (nameBuf.toString, tags.toSeq)
+    nameBuf.append(name.mkString("."))
+    log.ifDebug("\tFinal nameBuf: %s".format(nameBuf.toString()))
+    log.ifDebug("\tFinal tags: %s".format(tags.mkString("; ")))
+    log.debug("Exiting mkDefaultName()")
+    (nameBuf.toString(), tags.toSeq)
   }
 
-  //  private[dogstatsd] def mkRouterName(name: Seq[String]): (String, Seq[String]) = {
-  //    val nameBuf = StringBuilder.newBuilder
-  //    val tags = new ListBuilder[String]()
-  //    nameBuf.append("linkerd.routers")
-  //
-  //    val routerLabel = name(3)
-  //    tags += s"souter:$routerLabel"
-  //
-  //    if name(5) == "server" {
-  //      nameBuf.append(".servers")
-  //      val listenerAddress = name(6)
-  //      val listenerPort = name(7)
-  //      tags += s"linkerd_listener:$serverAddress:$serverPort"
-  //    } else {
-  //      nameBuf.append(".interpreter")
-  //      val interpreter = cleanName(5)
-  //      tags += s"linkerd_interpreter:$interpreter"
-  //    }
-  //    nameBuf.append(name.last) // append the stat itself
-  //  }
+  private[dogstatsd] def mkRouterName(cleanName: Seq[String]): (String, Seq[String]) = {
+    log.debug("Entering mkRoutercleanName() with\n\tcleanName: %s".format(cleanName.mkString("/")))
+    val metricNameBuf = StringBuilder.newBuilder
+    val tags = new ListBuffer[String]()
+    metricNameBuf.append("routers")
+
+    val routerLabel = cleanName(2)
+    tags += s"router:$routerLabel"
+    log.ifDebug(s"\trouterLabel: $routerLabel")
+
+    if (cleanName(3) == "server") {
+      log.debug("\tmunging rt.server")
+      metricNameBuf.append(".servers")
+      val listenerAddress = cleanName(4)
+      val listenerPort = cleanName(5)
+      tags += s"linkerd_listener:$listenerAddress:$listenerPort"
+      log.ifDebug("\tmetricNameBuf: %s".format(metricNameBuf.toString()))
+      log.ifDebug("\ttags: %s".format(tags.mkString("; ")))
+    } else {
+      log.debug("\tmunging rt.[interpreter]")
+      metricNameBuf.append(".interpreters")
+      val interpreter = cleanName(5)
+      tags += s"linkerd_interpreter:$interpreter"
+      log.ifDebug("\tmetricNameBuf: %s".format(metricNameBuf.toString()))
+      log.ifDebug("\ttags: %s".format(tags.mkString("; ")))
+    }
+    log.ifDebug("Exiting mkRoutercleanName with metricNameBuf: %s.%s".format(metricNameBuf.toString(), cleanName.last))
+    metricNameBuf.append(".%s".format(cleanName.last)) // append the stat itself
+
+    (metricNameBuf.toString(), tags.toSeq)
+  }
 
   private[dogstatsd] def mkName(name: Seq[String]): (String, Seq[String]) = {
-    var metricName: String = ""
+    log.ifDebug("Entering mkName() with name: %s".format(name.mkString("/")))
+    val metricName = StringBuilder.newBuilder
     val tags = new ListBuffer[String]()
-    val cleanName = name.mkString("/")
+    val cleanName: Seq[String] = name.mkString("/")
       .replaceAll("[^/A-Za-z0-9]", "_")
-      .replaceAll("/{2,}", "/")
-      .replace("/", ".") // http://graphite.readthedocs.io/en/latest/feeding-carbon.html#step-1-plan-a-naming-hierarchy
-      .replaceAll("\\.{2,}", ".") // remove all induced "..", "...", etc.
-      .split(".")
+      .replaceAll("//", "/")
+      .replaceAll("/", ".")
+      .split("\\.+").toSeq
+    log.ifDebug("\tcleanName: %s".format(cleanName.mkString("/")))
 
     // Find the environment, since we know that services come in the form
     //   `etoy.staging.primary.web`. However. it's worth noting that other
@@ -54,35 +76,54 @@ private[telemetry] object DogstatsDStatsReceiver {
     //   we'll have to catch this as well eventually instead of just bailing
     //   out.
     val environmentAnchors = List("development", "production", "staging", "util")
+    log.ifDebug("\tEnvironment Anchors: %s".format(environmentAnchors))
     var anchorIndex: Int = -1
+    log.debug("\tLooping over anchors")
     for (env <- environmentAnchors) {
-      anchorIndex = name.indexOf(env)
+      anchorIndex = cleanName.indexOf(env)
+      log.ifDebug(s"\t\tenv: $env, anchorIndex: $anchorIndex")
       if (anchorIndex >= 0) {
+        log.ifDebug(s"\t\tANCHOR FOUND: %s at cleanName(%s): %s".format(env, anchorIndex, cleanName(anchorIndex)))
         //We need to check for '_'s because this is a different format
-        if (name(anchorIndex) contains "_") anchorIndex = -1
+        if (cleanName(anchorIndex) contains "_") {
+          log.debug("\t\tFalse alarm - anchor is part of a seq item. Resetting anchorIndex to -1")
+          anchorIndex = -1
+        }
+        log.ifDebug(s"\t\tanchorIndex before `break`: $anchorIndex")
         break
       }
     }
-    if (anchorIndex != -1) { // We found a service name and parse the tags
-      val envName = cleanName(anchorIndex)
+    if (anchorIndex >= 0) { // We found a service name and parse the tags
+      log.ifDebug("\tanchorIndex was not negative. Attempt to parse tags.")
       val appName = cleanName(anchorIndex - 1)
-      val namespace = cleanName(anchorIndex + 1)
       val appServiceName = cleanName(anchorIndex + 2)
-
+      val envName = cleanName(anchorIndex)
+      val namespace = cleanName(anchorIndex + 1)
+      log.debug("\tcleanName: %s".format(cleanName))
+      log.debug("\tappName: %s, appServiceName: %s, envName: %s, namespace: %s".format(appName, appServiceName, envName, namespace))
       tags += s"app:$appName"
       tags += s"app_namespace:$namespace"
       tags += s"app_service:$appServiceName"
-      val metricName: String = name
-        .filterNot(field => field == appName &&
-          field == namespace &&
-          field == appServiceName &&
-          field == envName)
-        .mkString(".")
+      log.ifDebug("\ttags: %s".format(tags.mkString("; ")))
+
+      metricName.append(cleanName.filterNot(field => field == appName &&
+        field == namespace &&
+        field == appServiceName &&
+        field == envName).mkString("."))
+      log.ifDebug("\tmetricName: %s".format(metricName.toString()))
     } else {
-      mkDefaultName(cleanName)
+      log.debug("\tanchorIndex was negative. Pass throug original string.")
+      metricName.append(mkDefaultName(cleanName)._1)
+      log.ifDebug("\tmetricName: %s".format(metricName.toString()))
     }
-    if (metricName.isEmpty) metricName = cleanName.mkString(".")
-    (metricName, tags)
+    log.ifDebug("\tmetricName after conditional: %s".format(metricName.toString()))
+    if (metricName.isEmpty) {
+      log.debug("\tmetricName is empty! Setting a default value.")
+      metricName.append(cleanName.mkString("."))
+    }
+    tags += "test:linkerd"
+    log.ifDebug("\tFinal metricName: %s, Final tags: %s".format(metricName.toString(), tags.mkString("; ")))
+    (metricName.toString(), tags.toSeq)
   }
 
   //  private[dogstatsd] def mkName(name: Seq[String]): (String, Seq[String]) = {
@@ -93,14 +134,17 @@ private[telemetry] object DogstatsDStatsReceiver {
   //      .replaceAll("\\.{2,}", ".")
   //      .split(".")
   //
-  //    cleanName(2) match {
-  //        case "namerd" => mkDefaultName(cleanName) // need to properly parse router names first
-  //        case "rt"     => mkDefaultName(cleanName) // and namer names as well.
-  //        case _        => mkDefaultName(cleanName)
-  //    }
-  //    val metricName, tags = parseName(cleanName)
-  //
-  //    (metricName, tags)
+  //      val log = Logger.get("com.blueapron.linkerd.telemetry.dogstatsd")
+  //      log.info(cleanName.mkString("."))
+  //      if (cleanName.length >= 2) {
+  //        cleanName(2) match {
+  //          case "namerd" => mkDefaultName(cleanName) // need to properly parse router names first
+  //          case "rt"     => mkDefaultName(cleanName) // and namer names as well.
+  //          case _        => mkDefaultName(cleanName)
+  //        }
+  //        } else {
+  //          (cleanName.mkString("."), Seq())
+  //        }
   //  }
 }
 

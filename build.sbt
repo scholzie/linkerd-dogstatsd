@@ -7,8 +7,8 @@ def finagle(mod: String) =
 def telemetery(mod: String) =
   "io.buoyant" %% s"telemetry-$mod" % "1.1.1"
 
-def scalatest() =
-  "org.scalatest" %% "scalatest" % "3.0.1"
+//def scalatest() =
+//  "org.scalatest" %% "scalatest" % "3.0.1"
 
 def statsd() =
   "com.datadoghq" % "java-dogstatsd-client" % "2.3"
@@ -17,7 +17,7 @@ val `linkerd-dogstatsd` =
   project.in(file("."))
     .settings(
       organization := "com.blueapron",
-      version := "0.1.1",
+      version := "0.1.3",
       name := "linkerd-dogstatsd",
       scalaVersion in GlobalScope := "2.12.1",
       ivyScala := ivyScala.value.map(_.copy(overrideScalaVersion = true)),
@@ -30,8 +30,8 @@ val `linkerd-dogstatsd` =
         finagle("core"),
         statsd(),
         telemetery("core"),
-        twitterUtil("stats"),
-        scalatest() % "test"
+        twitterUtil("stats")//,
+//        scalatest() % "test"
       ),
       aggregate in assembly := false,
       assemblyMergeStrategy in assembly := {
