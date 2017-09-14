@@ -12,116 +12,169 @@ private[telemetry] object DogstatsDStatsReceiver {
   private val log = Logger.get("com.blueapron.linkerd.telemetry.dogstatsd")
   log.setLevel(Level.DEBUG)
 
-  private[dogstatsd] def mkDefaultName(name: Seq[String]): (String, Seq[String]) = {
-    log.ifDebug("In mkDefaultName() with\n\tname: %s".format(name.mkString("/")))
-    val tags = new ListBuffer[String]()
-    val nameBuf = StringBuilder.newBuilder
-    // nameBuf.append("linkerd.")
-    tags += s"app:unknown"
-    nameBuf.append(name.mkString("."))
-    log.ifDebug("\tFinal nameBuf: %s".format(nameBuf.toString()))
-    log.ifDebug("\tFinal tags: %s".format(tags.mkString("; ")))
-    log.debug("Exiting mkDefaultName()")
-    (nameBuf.toString(), tags.toSeq)
-  }
+  //  private[dogstatsd] def mkDefaultName(name: Seq[String]): (String, Seq[String]) = {
+  //    log.ifDebug("In mkDefaultName() with\n\tname: %s".format(name.mkString("/")))
+  //    val tags = new ListBuffer[String]()
+  //    val nameBuf = StringBuilder.newBuilder
+  //    // nameBuf.append("linkerd.")
+  //    tags += s"app:unknown"
+  //    nameBuf.append(name.mkString("."))
+  //    log.ifDebug("\tFinal nameBuf: %s".format(nameBuf.toString()))
+  //    log.ifDebug("\tFinal tags: %s".format(tags.mkString("; ")))
+  //    log.debug("Exiting mkDefaultName()")
+  //    (nameBuf.toString(), tags.toSeq)
+  //  }
+  //
+  //  private[dogstatsd] def mkRouterName(cleanName: Seq[String]): (String, Seq[String]) = {
+  //    log.debug("Entering mkRoutercleanName() with\n\tcleanName: %s".format(cleanName.mkString("/")))
+  //    val metricNameBuf = StringBuilder.newBuilder
+  //    val tags = new ListBuffer[String]()
+  //    metricNameBuf.append("routers")
+  //
+  //    val routerLabel = cleanName(2)
+  //    tags += s"router:$routerLabel"
+  //    log.ifDebug(s"\trouterLabel: $routerLabel")
+  //
+  //    if (cleanName(3) == "server") {
+  //      log.debug("\tmunging rt.server")
+  //      metricNameBuf.append(".servers")
+  //      val listenerAddress = cleanName(4)
+  //      val listenerPort = cleanName(5)
+  //      tags += s"linkerd_listener:$listenerAddress:$listenerPort"
+  //      log.ifDebug("\tmetricNameBuf: %s".format(metricNameBuf.toString()))
+  //      log.ifDebug("\ttags: %s".format(tags.mkString("; ")))
+  //    } else {
+  //      log.debug("\tmunging rt.[interpreter]")
+  //      metricNameBuf.append(".interpreters")
+  //      val interpreter = cleanName(5)
+  //      tags += s"linkerd_interpreter:$interpreter"
+  //      log.ifDebug("\tmetricNameBuf: %s".format(metricNameBuf.toString()))
+  //      log.ifDebug("\ttags: %s".format(tags.mkString("; ")))
+  //    }
+  //    log.ifDebug("Exiting mkRoutercleanName with metricNameBuf: %s.%s".format(metricNameBuf.toString(), cleanName.last))
+  //    metricNameBuf.append(".%s".format(cleanName.last)) // append the stat itself
+  //
+  //    (metricNameBuf.toString(), tags.toSeq)
+  //  }
+  //
+  //  private[dogstatsd] def mkName(name: Seq[String]): (String, Seq[String]) = {
+  //    log.ifDebug("Entering mkName() with name: %s".format(name.mkString("/")))
+  //    val metricName = StringBuilder.newBuilder
+  //    val tags = new ListBuffer[String]()
+  //    val cleanName: Seq[String] = name.mkString("/")
+  //      .replaceAll("[^/A-Za-z0-9]", "_")
+  //      .replaceAll("//", "/")
+  //      .replaceAll("/", ".")
+  //      .split("\\.+").toSeq
+  //    log.ifDebug("\tcleanName: %s".format(cleanName.mkString("/")))
+  //
+  //    // Find the environment, since we know that services come in the form
+  //    //   `etoy.staging.primary.web`. However. it's worth noting that other
+  //    //   metrics have services in the form of `etoy_staging_primary_web`, so
+  //    //   we'll have to catch this as well eventually instead of just bailing
+  //    //   out.
+  //    val environmentAnchors = List("development", "production", "staging", "util")
+  //    log.ifDebug("\tEnvironment Anchors: %s".format(environmentAnchors))
+  //    var anchorIndex: Int = -1
+  //    log.debug("\tLooping over anchors")
+  //    for (env <- environmentAnchors) {
+  //      anchorIndex = cleanName.indexOf(env)
+  //      log.ifDebug(s"\t\tenv: $env, anchorIndex: $anchorIndex")
+  //      if (anchorIndex >= 0) {
+  //        log.ifDebug(s"\t\tANCHOR FOUND: %s at cleanName(%s): %s".format(env, anchorIndex, cleanName(anchorIndex)))
+  //        //We need to check for '_'s because this is a different format
+  //        if (cleanName(anchorIndex) contains "_") {
+  //          log.debug("\t\tFalse alarm - anchor is part of a seq item. Resetting anchorIndex to -1")
+  //          anchorIndex = -1
+  //        }
+  //        log.ifDebug(s"\t\tanchorIndex before `break`: $anchorIndex")
+  //        break
+  //      }
+  //    }
+  //    if (anchorIndex >= 0) { // We found a service name and parse the tags
+  //      log.ifDebug("\tanchorIndex was not negative. Attempt to parse tags.")
+  //      val appName = cleanName(anchorIndex - 1)
+  //      val appServiceName = cleanName(anchorIndex + 2)
+  //      val envName = cleanName(anchorIndex)
+  //      val namespace = cleanName(anchorIndex + 1)
+  //      log.debug("\tcleanName: %s".format(cleanName))
+  //      log.debug("\tappName: %s, appServiceName: %s, envName: %s, namespace: %s".format(appName, appServiceName, envName, namespace))
+  //      tags += s"app:$appName"
+  //      tags += s"app_namespace:$namespace"
+  //      tags += s"app_service:$appServiceName"
+  //      log.ifDebug("\ttags: %s".format(tags.mkString("; ")))
+  //
+  //      metricName.append(cleanName.filterNot(field => field == appName &&
+  //        field == namespace &&
+  //        field == appServiceName &&
+  //        field == envName).mkString("."))
+  //      log.ifDebug("\tmetricName: %s".format(metricName.toString()))
+  //    } else {
+  //      log.debug("\tanchorIndex was negative. Pass throug original string.")
+  //      metricName.append(mkDefaultName(cleanName)._1)
+  //      log.ifDebug("\tmetricName: %s".format(metricName.toString()))
+  //    }
+  //    log.ifDebug("\tmetricName after conditional: %s".format(metricName.toString()))
+  //    if (metricName.isEmpty) {
+  //      log.debug("\tmetricName is empty! Setting a default value.")
+  //      metricName.append(cleanName.mkString("."))
+  //    }
+  //    tags += "test:linkerd"
+  //    log.ifDebug("\tFinal metricName: %s, Final tags: %s".format(metricName.toString(), tags.mkString("; ")))
+  //    (metricName.toString(), tags.toSeq)
+  //  }
 
-  private[dogstatsd] def mkRouterName(cleanName: Seq[String]): (String, Seq[String]) = {
-    log.debug("Entering mkRoutercleanName() with\n\tcleanName: %s".format(cleanName.mkString("/")))
-    val metricNameBuf = StringBuilder.newBuilder
-    val tags = new ListBuffer[String]()
-    metricNameBuf.append("routers")
-
-    val routerLabel = cleanName(2)
-    tags += s"router:$routerLabel"
-    log.ifDebug(s"\trouterLabel: $routerLabel")
-
-    if (cleanName(3) == "server") {
-      log.debug("\tmunging rt.server")
-      metricNameBuf.append(".servers")
-      val listenerAddress = cleanName(4)
-      val listenerPort = cleanName(5)
-      tags += s"linkerd_listener:$listenerAddress:$listenerPort"
-      log.ifDebug("\tmetricNameBuf: %s".format(metricNameBuf.toString()))
-      log.ifDebug("\ttags: %s".format(tags.mkString("; ")))
-    } else {
-      log.debug("\tmunging rt.[interpreter]")
-      metricNameBuf.append(".interpreters")
-      val interpreter = cleanName(5)
-      tags += s"linkerd_interpreter:$interpreter"
-      log.ifDebug("\tmetricNameBuf: %s".format(metricNameBuf.toString()))
-      log.ifDebug("\ttags: %s".format(tags.mkString("; ")))
-    }
-    log.ifDebug("Exiting mkRoutercleanName with metricNameBuf: %s.%s".format(metricNameBuf.toString(), cleanName.last))
-    metricNameBuf.append(".%s".format(cleanName.last)) // append the stat itself
-
-    (metricNameBuf.toString(), tags.toSeq)
-  }
-
-  private[dogstatsd] def mkName(name: Seq[String]): (String, Seq[String]) = {
-    log.ifDebug("Entering mkName() with name: %s".format(name.mkString("/")))
-    val metricName = StringBuilder.newBuilder
-    val tags = new ListBuffer[String]()
-    val cleanName: Seq[String] = name.mkString("/")
-      .replaceAll("[^/A-Za-z0-9]", "_")
-      .replaceAll("//", "/")
+  private[this] val metricNameDisallowedChars = "[^/A-Za-z0-9]".r
+  private[this] def escapeMetric(name: Seq[String]): String = {
+    name.mkString("/")
+      .replaceAll(metricNameDisallowedChars, "_")
+      .replaceAll("//+", "/")
       .replaceAll("/", ".")
-      .split("\\.+").toSeq
-    log.ifDebug("\tcleanName: %s".format(cleanName.mkString("/")))
+  }
+  private[this] val tagKeyDisallowedChars = "[^A-Za-z0-9]".r
+  private[this] def escapeTagKey(key: String) = tagKeyDisallowedChars.replaceAllIn(key, "_")
+  private[this] val tagValueDisallowedChars = """(\\|\"|\n|\t|\r|,|#)""".r
+  private[this] def escapeTagValue(value: String) = tagValueDisallowedChars.replaceAllIn(value, """\\\\""")
 
-    // Find the environment, since we know that services come in the form
-    //   `etoy.staging.primary.web`. However. it's worth noting that other
-    //   metrics have services in the form of `etoy_staging_primary_web`, so
-    //   we'll have to catch this as well eventually instead of just bailing
-    //   out.
-    val environmentAnchors = List("development", "production", "staging", "util")
-    log.ifDebug("\tEnvironment Anchors: %s".format(environmentAnchors))
-    var anchorIndex: Int = -1
-    log.debug("\tLooping over anchors")
-    for (env <- environmentAnchors) {
-      anchorIndex = cleanName.indexOf(env)
-      log.ifDebug(s"\t\tenv: $env, anchorIndex: $anchorIndex")
-      if (anchorIndex >= 0) {
-        log.ifDebug(s"\t\tANCHOR FOUND: %s at cleanName(%s): %s".format(env, anchorIndex, cleanName(anchorIndex)))
-        //We need to check for '_'s because this is a different format
-        if (cleanName(anchorIndex) contains "_") {
-          log.debug("\t\tFalse alarm - anchor is part of a seq item. Resetting anchorIndex to -1")
-          anchorIndex = -1
-        }
-        log.ifDebug(s"\t\tanchorIndex before `break`: $anchorIndex")
-        break
-      }
-    }
-    if (anchorIndex >= 0) { // We found a service name and parse the tags
-      log.ifDebug("\tanchorIndex was not negative. Attempt to parse tags.")
-      val appName = cleanName(anchorIndex - 1)
-      val appServiceName = cleanName(anchorIndex + 2)
-      val envName = cleanName(anchorIndex)
-      val namespace = cleanName(anchorIndex + 1)
-      log.debug("\tcleanName: %s".format(cleanName))
-      log.debug("\tappName: %s, appServiceName: %s, envName: %s, namespace: %s".format(appName, appServiceName, envName, namespace))
-      tags += s"app:$appName"
-      tags += s"app_namespace:$namespace"
-      tags += s"app_service:$appServiceName"
-      log.ifDebug("\ttags: %s".format(tags.mkString("; ")))
-
-      metricName.append(cleanName.filterNot(field => field == appName &&
-        field == namespace &&
-        field == appServiceName &&
-        field == envName).mkString("."))
-      log.ifDebug("\tmetricName: %s".format(metricName.toString()))
+  private[this] def formatTags(tags: Seq[(String, String)]): String =
+    if (tags.nonEmpty) {
+      tags.map {
+        case (k, v) =>
+          s"${escapeTagKey(k)}:${escapeTagValue(v)}"
+      }.mkString(",")
     } else {
-      log.debug("\tanchorIndex was negative. Pass throug original string.")
-      metricName.append(mkDefaultName(cleanName)._1)
-      log.ifDebug("\tmetricName: %s".format(metricName.toString()))
+      ""
     }
-    log.ifDebug("\tmetricName after conditional: %s".format(metricName.toString()))
-    if (metricName.isEmpty) {
-      log.debug("\tmetricName is empty! Setting a default value.")
-      metricName.append(cleanName.mkString("."))
+
+  private[this] val first: ((String, String)) => String = _._1
+  private[this] def tagExists(tags: Seq[(String, String)], name: String) =
+    tags.toIterator.map(first).contains(name)
+
+  private[dogstatsd] def mkName(
+    name: Seq[String],
+    tags: Seq[(String, String)] = Seq(("test", "linkerd"))
+  ): (String, Seq[String]) = {
+    // Take pieces of the name and turn them into tags
+    log.ifDebug(s"""Creating name and tags from name "${name}" and tags "${tags}"""")
+    val (cleanName, cleanTags) = name match {
+      case Seq("rt", router) if !tagExists(tags, "rt") =>
+        (Seq("rt"), tags :+ ("rt" -> router))
+      case Seq("rt", "service", path) if !tagExists(tags, "service") =>
+        (Seq("rt", "service"), tags :+ ("service" -> path))
+      case Seq("rt", "client", id) if !tagExists(tags, "client") =>
+        (Seq("rt", "client"), tags :+ ("client" -> id))
+      case Seq("rt", "client", "service", path) if !tagExists(tags, "service") =>
+        (Seq("rt", "client", "service"), tags :+ ("service" -> path))
+      case Seq("rt", "server", srv) if !tagExists(tags, "server") =>
+        (Seq("rt", "server"), tags :+ ("server" -> srv))
+      case _ => (name, tags)
     }
-    tags += "test:linkerd"
-    log.ifDebug("\tFinal metricName: %s, Final tags: %s".format(metricName.toString(), tags.mkString("; ")))
-    (metricName.toString(), tags.toSeq)
+
+    val metricName = escapeMetric(cleanName)
+    log.debug(s"Final metricName: $metricName, Final tags: $cleanTags")
+    (metricName, formatTags(cleanTags).split(","))
+    //log.debug(s"Fomatted tags: ${formatTags(cleanTags)}")
+    //(metricName, formatTags(cleanTags)
   }
 }
 
