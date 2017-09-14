@@ -16,13 +16,13 @@ class DogstatsDInitializer extends TelemeterInitializer {
 }
 
 private[telemetry] object DogstatsDConfig {
-  val DefaultPrefix = "linkerd"
+  val DefaultConstantTags = Seq()
+  val DefaultDebugMode = false // only output logs - don't ship to datadog
+  val DefaultGaugeIntervalMs = 10000 // for gauges
   val DefaultHostname = "127.0.0.1"
   val DefaultPort = 8125
-  val DefaultGaugeIntervalMs = 10000 // for gauges
+  val DefaultPrefix = "linkerd"
   val DefaultSampleRate = 0.01d // for counters and timing/histograms
-  val DefaultConstantTags = List("constant_tag:linkerd_test")
-
   val MaxQueueSize = 10000
 }
 
@@ -32,6 +32,7 @@ case class DogstatsDConfig(
     port: Option[Int],
     gaugeIntervalMs: Option[Int],
     @JsonDeserialize(contentAs = classOf[java.lang.Double]) sampleRate: Option[Double],
+    debug: Option[Boolean],
     constantTags: Option[Seq[String]]
 ) extends TelemeterConfig {
   import DogstatsDConfig._
@@ -40,12 +41,13 @@ case class DogstatsDConfig(
 
   @JsonIgnore private[this] val log = Logger.get("com.blueapron.linkerd.telemetry.dogstatsd")
 
-  @JsonIgnore private[this] val dogstatsDPrefix = prefix.getOrElse(DefaultPrefix)
-  @JsonIgnore private[this] val dogstatsDHost = hostname.getOrElse(DefaultHostname)
-  @JsonIgnore private[this] val dogstatsDPort = port.getOrElse(DefaultPort)
-  @JsonIgnore private[this] val dogstatsDInterval = gaugeIntervalMs.getOrElse(DefaultGaugeIntervalMs)
-  @JsonIgnore private[this] val dogstatsDSampleRate = sampleRate.getOrElse(DefaultSampleRate)
   @JsonIgnore private[this] val dogstatsDConstantTags = constantTags.getOrElse(DefaultConstantTags)
+  @JsonIgnore private[this] val dogstatsDHost = hostname.getOrElse(DefaultHostname)
+  @JsonIgnore private[this] val dogstatsDInterval = gaugeIntervalMs.getOrElse(DefaultGaugeIntervalMs)
+  @JsonIgnore private[this] val dogstatsDPort = port.getOrElse(DefaultPort)
+  @JsonIgnore private[this] val dogstatsDPrefix = prefix.getOrElse(DefaultPrefix)
+  @JsonIgnore private[this] val dogstatsDSampleRate = sampleRate.getOrElse(DefaultSampleRate)
+  @JsonIgnore private[this] val dogstatsDDebugMode : Boolean = debug.getOrElse(DefaultDebugMode)
 
   @JsonIgnore
   def mk(params: Stack.Params): DogstatsDTelemeter = {
@@ -60,7 +62,7 @@ case class DogstatsDConfig(
     )
 
     new DogstatsDTelemeter(
-      new DogstatsDStatsReceiver(dogstatsDClient, dogstatsDSampleRate),
+      new DogstatsDStatsReceiver(dogstatsDClient, dogstatsDSampleRate, dogstatsDDebugMode),
       dogstatsDInterval,
       DefaultTimer
     )

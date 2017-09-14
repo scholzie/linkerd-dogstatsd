@@ -13,12 +13,16 @@ private[dogstatsd] object Metric {
       dogstatsDClient: StatsDClient,
       name: String,
       sampleRate: Double,
-      tags: Seq[String]
+      tags: Seq[String],
+      debug: Boolean = false
   ) extends FCounter {
     def incr(delta: Int): Unit = {
-      log.ifDebug("Sending Counter with {\n\tname: %s, \n\tdelta: %s,\n\tsampleRate: %s,\n\ttags: %s\n}"
+      log.ifDebug("Sending Counter with {name: %s, delta: %s, sampleRate: %s, tags: %s}"
         .format(name, delta, sampleRate, tags))
-      //dogstatsDClient.count(name, delta, sampleRate, tags: _*)
+      if (!debug)
+        dogstatsDClient.count(name, delta, sampleRate, tags: _*)
+      else
+        log.debug("Debug mode enabled - did not sent metric.")
     }
   }
 
@@ -27,12 +31,16 @@ private[dogstatsd] object Metric {
       dogstatsDClient: StatsDClient,
       name: String,
       f: => Float,
-      tags: Seq[String]
+      tags: Seq[String],
+      debug: Boolean = false
   ) {
     def send: Unit = {
-      log.ifDebug("Sending Gauge with {\n\tname: %s, \n\tf: %s,\n\ttags: %s\n}"
+      log.ifDebug("Sending Gauge with {name: %s, f: %s, tags: %s}"
         .format(name, f, tags))
-      //dogstatsDClient.recordGaugeValue(name, f, tags: _*)
+      if (!debug)
+        dogstatsDClient.recordGaugeValue(name, f, tags: _*)
+      else
+        log.debug("Debug mode enabled - did not sent metric.")
     }
   }
 
@@ -41,12 +49,16 @@ private[dogstatsd] object Metric {
       dogstatsDClient: StatsDClient,
       name: String,
       sampleRate: Double,
-      tags: Seq[String]
+      tags: Seq[String],
+      debug: Boolean = false
   ) extends FStat {
     def add(value: Float): Unit = {
-      log.ifDebug("Sending Histogram with {\n\tname: %s, \n\tvalue: %s,\n\tsampleRate: %s,\n\ttags: %s\n}"
+      log.ifDebug("Sending Histogram with {name: %s, value: %s, sampleRate: %s, tags: %s}"
         .format(name, value.toLong, sampleRate, tags))
-      //dogstatsDClient.recordHistogramValue(name, value.toLong, sampleRate, tags: _*)
+      if (!debug)
+        dogstatsDClient.recordHistogramValue(name, value.toLong, sampleRate, tags: _*)
+      else
+        log.debug("Debug mode enabled - did not sent metric.")
     }
   }
 }
