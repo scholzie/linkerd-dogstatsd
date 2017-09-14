@@ -7,12 +7,6 @@ def finagle(mod: String) =
 def telemetery(mod: String) =
   "io.buoyant" %% s"telemetry-$mod" % "1.1.1"
 
-//def linkerd(mod: String) =
-//  "io.buoyant" %% s"linkerd-$mod" % "1.1.3"
-//
-//def namerd(mod: String) =
-//  "io.buoyant" %% s"namerd-$mod" % "1.1.3"
-
 def statsd() =
   "com.datadoghq" % "java-dogstatsd-client" % "2.3"
 
@@ -31,8 +25,6 @@ val `linkerd-dogstatsd` =
       ),
       libraryDependencies ++= Seq(
         finagle("core") % "provided",
-        //linkerd("core") % "provided",
-        //namerd("core") % "provided",
         telemetery("core") % "provided",
         twitterUtil("stats") % "provided",
         statsd

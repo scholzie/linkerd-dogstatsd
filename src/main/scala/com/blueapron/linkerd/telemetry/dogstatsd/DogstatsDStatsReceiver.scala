@@ -123,27 +123,6 @@ private[telemetry] object DogstatsDStatsReceiver {
     log.ifDebug("\tFinal metricName: %s, Final tags: %s".format(metricName.toString(), tags.mkString("; ")))
     (metricName.toString(), tags.toSeq)
   }
-
-  //  private[dogstatsd] def mkName(name: Seq[String]): (String, Seq[String]) = {
-  //    var cleanName = name.mkString("/")
-  //      .replaceAll("[^/A-Za-z0-9]", "_")
-  //      .replaceAll("/{2,}", "/")
-  //      .replace("/", ".") // http://graphite.readthedocs.io/en/latest/feeding-carbon.html#step-1-plan-a-naming-hierarchy
-  //      .replaceAll("\\.{2,}", ".")
-  //      .split(".")
-  //
-  //      val log = Logger.get("com.blueapron.linkerd.telemetry.dogstatsd")
-  //      log.info(cleanName.mkString("."))
-  //      if (cleanName.length >= 2) {
-  //        cleanName(2) match {
-  //          case "namerd" => mkDefaultName(cleanName) // need to properly parse router names first
-  //          case "rt"     => mkDefaultName(cleanName) // and namer names as well.
-  //          case _        => mkDefaultName(cleanName)
-  //        }
-  //        } else {
-  //          (cleanName.mkString("."), Seq())
-  //        }
-  //  }
 }
 
 private[telemetry] class DogstatsDStatsReceiver(
